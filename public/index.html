@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RevAI — отзывы и календарь</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">RevAI</div>
+    <nav class="tabs">
+      <button data-tab="rcal" class="active">Календарь отзывов</button>
+      <button data-tab="mcal">Календарь встреч</button>
+      <button data-tab="problems">Проблемы</button>
+      <button data-tab="reviews">Отзывы</button>
+      <button data-tab="stats">Статистика</button>
+      <button data-tab="clients">Клиенты</button>
+      <button data-tab="import">Источники</button>
+    </nav>
+    <select id="clientFilter" title="Клиент"><option value="">Все клиенты</option></select>
+    <span id="statusBadge" class="badge"></span>
+  </header>
+
+  <main>
+    <!-- Календарь отзывов: когда какой отзыв появился -->
+    <section id="tab-rcal" class="tab active" data-cal="r">
+      <div class="cal-head">
+        <button class="ghost cal-prev">‹</button>
+        <h2 class="cal-title"></h2>
+        <button class="ghost cal-next">›</button>
+        <button class="ghost cal-today">Сегодня</button>
+        <div class="legend">
+          <span><i class="dot pos"></i>позитив</span>
+          <span><i class="dot neu"></i>нейтрально</span>
+          <span><i class="dot neg"></i>негатив</span>
+          <span><b class="alert">!N</b> просрочено</span>
+        </div>
+      </div>
+      <div class="cal-layout">
+        <div>
+          <div class="month-kpis" id="rKpis"></div>
+          <div class="cal-grid" id="rGrid"></div>
+        </div>
+        <aside class="day-panel">
+          <h3 id="rDayTitle">Выберите день</h3>
+          <div id="dayReviews"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Календарь встреч -->
+    <section id="tab-mcal" class="tab" data-cal="m">
+      <div class="cal-head">
+        <button class="ghost cal-prev">‹</button>
+        <h2 class="cal-title"></h2>
+        <button class="ghost cal-next">›</button>
+        <button class="ghost cal-today">Сегодня</button>
+      </div>
+      <div class="cal-layout">
+        <div>
+          <div class="month-kpis" id="mKpis"></div>
+          <div class="cal-grid mcal" id="mGrid"></div>
+        </div>
+        <aside class="day-panel">
+          <h3 id="mDayTitle">Выберите день</h3>
+          <div id="dayMeetings"></div>
+          <form id="quickMeeting" class="stack">
+            <h4>Быстро, своими словами</h4>
+            <textarea name="text" rows="2" placeholder="например: завтра в 15:00 встреча с Матрёшкой по отзывам на час"></textarea>
+            <button type="submit" class="ghost">Разобрать</button>
+            <p class="muted" id="quickHint">То же умеет Telegram-бот: голосовым или текстом.</p>
+          </form>
+          <form id="meetingForm" class="stack">
+            <h4>Новая встреча</h4>
+            <input name="title" placeholder="Тема встречи" required maxlength="200">
+            <div class="row">
+              <input name="time" type="time" value="10:00" required>
+              <input name="duration_min" type="number" value="60" min="5" step="5" title="Длительность, мин">
+            </div>
+            <select name="client_id"><option value="">Без клиента</option></select>
+            <textarea name="notes" rows="2" placeholder="Заметки"></textarea>
+            <button type="submit">Добавить</button>
+          </form>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Проблемы: плохие отзывы по видам проблем -->
+    <section id="tab-problems" class="tab">
+      <div class="filters">
+        <div class="seg" id="probPeriod">
+          <button data-months="3">3 месяца</button>
+          <button data-months="6">6 месяцев</button>
+          <button data-months="12" class="active">Год</button>
+          <button data-months="0">Всё время</button>
+        </div>
+        <span class="muted">Плохой отзыв: оценка 3★ и ниже или негатив по оценке ИИ. Один отзыв может касаться нескольких проблем.</span>
+      </div>
+      <div class="month-kpis" id="probKpis"></div>
+      <div class="card prob-trend"><h3>Плохие отзывы по месяцам</h3><div id="probTrend"></div></div>
+      <div class="prob-grid" id="probCats"></div>
+      <div class="card stack">
+        <div class="row"><h3 id="probListTitle">Все плохие отзывы</h3><button id="probReset" class="ghost hidden">Показать все</button></div>
+        <div id="probList" class="stack"></div>
+      </div>
+    </section>
+
+    <!-- Отзывы -->
+    <section id="tab-reviews" class="tab">
+      <div class="filters">
+        <div class="seg" id="statusSeg">
+          <button data-status="" class="active">Все</button>
+          <button data-status="new">Новый</button>
+          <button data-status="draft_ready">Черновик готов</button>
+          <button data-status="approved">Одобрен</button>
+          <button data-status="answered">Есть ответ на площадке</button>
+          <button data-status="overdue">Просрочен</button>
+        </div>
+        <select id="sourceFilter"><option value="">Google и Яндекс</option><option value="google">Google</option><option value="yandex">Яндекс</option></select>
+      </div>
+      <div id="reviewList" class="review-list"></div>
+    </section>
+
+    <!-- Статистика -->
+    <section id="tab-stats" class="tab">
+      <div class="filters">
+        <label>Месяц <input type="month" id="statsMonth"></label>
+        <button id="summaryBtn">Сформировать сводку за месяц</button>
+      </div>
+      <div id="statsBody"></div>
+      <div id="summaryBox" class="card hidden"></div>
+    </section>
+
+    <!-- Клиенты -->
+    <section id="tab-clients" class="tab">
+      <div class="two-col">
+        <div id="clientList" class="stack"></div>
+        <form id="clientForm" class="card stack">
+          <h3 id="clientFormTitle">Новый клиент</h3>
+          <input type="hidden" name="id">
+          <label>Название<input name="name" required maxlength="2000"></label>
+          <label>Услуги<textarea name="services" rows="2" maxlength="2000"></textarea></label>
+          <label>Тон общения<input name="tone" maxlength="2000" placeholder="например: дружелюбный, на «вы»"></label>
+          <label>Контакты для ответов<input name="contacts" maxlength="2000"></label>
+          <label>Стоп-слова<input name="stop_words" maxlength="2000" placeholder="через запятую"></label>
+          <label>Ссылка на Яндекс Карты<input name="yandex_org_url" placeholder="https://yandex.ru/maps/org/…"></label>
+          <label>Ссылка на Google Карты<input name="google_maps_url" placeholder="https://www.google.com/maps/place/… или https://maps.app.goo.gl/…"></label>
+          <label>Google location (только для официального API)<input name="google_location" placeholder="accounts/…/locations/…"></label>
+          <div class="row">
+            <button type="submit">Сохранить</button>
+            <button type="button" id="clientReset" class="ghost">Новый</button>
+            <button type="button" id="clientDelete" class="danger hidden">Удалить</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Источники -->
+    <section id="tab-import" class="tab">
+      <div class="two-col">
+        <div class="card stack">
+          <h3>Парсер Яндекс и Google Карт</h3>
+          <p class="muted">Собирает публичные отзывы со страниц организаций по ссылкам из карточек клиентов. Работает через Chrome на этом компьютере, его окно открывается за пределами экрана. Повторный запуск добавляет только новые отзывы. Google без входа в аккаунт показывает лишь несколько отзывов: один раз выполните в терминале <code>npm run google-login</code> и войдите в Google в открывшемся окне.</p>
+          <p id="parserState" class="muted"></p>
+          <button id="mapsSync">Загрузить отзывы с карт</button>
+          <pre id="mapsResult" class="hidden"></pre>
+        </div>
+        <div class="card stack">
+          <h3>Google: официальный API</h3>
+          <p class="muted">Отзывы загружаются через официальный Google Business Profile API по карточкам, где ваш аккаунт владелец или менеджер. Ключи задаются в файле <code>.env</code>, а в карточке клиента указывается Google location.</p>
+          <p id="googleState" class="muted"></p>
+          <button id="googleSync">Загрузить отзывы из Google</button>
+          <pre id="googleResult" class="hidden"></pre>
+        </div>
+        <form id="csvForm" class="card stack">
+          <h3>Импорт CSV (Яндекс или Google)</h3>
+          <p class="muted">Запасной вариант, если парсер не справился: выгрузка отзывов файлом. Колонки: <code>дата;автор;оценка;текст</code>, дата в формате ДД.ММ.ГГГГ ЧЧ:ММ.</p>
+          <label>Клиент<select name="client_id" required></select></label>
+          <label>Источник<select name="source"><option value="yandex">Яндекс</option><option value="google">Google</option></select></label>
+          <input type="file" name="file" accept=".csv,text/csv" required>
+          <button type="submit">Загрузить</button>
+          <pre id="csvResult" class="hidden"></pre>
+        </form>
+        <div class="card stack">
+          <h3>Telegram: дневная статистика</h3>
+          <p class="muted">Бот присылает администратору статистику по отзывам за день. Токен бота и id администратора задаются в <code>.env</code>, инструкция в README.</p>
+          <p id="tgState" class="muted"></p>
+          <div class="row">
+            <button id="tgPreview" class="ghost">Показать отчёт за сегодня</button>
+            <button id="tgSend">Отправить сейчас</button>
+          </div>
+          <pre id="tgResult" class="hidden"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <template id="reviewTpl">
+    <article class="review">
+      <div class="review-head">
+        <span class="src"></span>
+        <span class="stars"></span>
+        <b class="author"></b>
+        <span class="muted date"></span>
+        <span class="muted client"></span>
+        <span class="pill status"></span>
+      </div>
+      <p class="text"></p>
+      <p class="owner-reply hidden"></p>
+      <div class="tags"></div>
+      <textarea class="draft" rows="3" placeholder="Черновик ещё готовится…"></textarea>
+      <div class="row actions">
+        <button class="approve">Одобрить</button>
+        <button class="save ghost">Сохранить правку</button>
+        <input class="hint" placeholder="Пожелание к новому варианту (необязательно)">
+        <button class="regen ghost">Перегенерировать</button>
+        <button class="copy ghost">Копировать</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
